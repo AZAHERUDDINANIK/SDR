@@ -34,7 +34,7 @@ void ADC_Init (void)
 	
 // Set the Respective GPIO PINs in the Analog Mode	
 	GPIOA->MODER |= (3<<2);  // analog mode for PA 1
-	GPIOA->MODER |= (3<<8);  // analog mode for PA 4
+	GPIOA->MODER |= (3<<8);  // analog mode for PA 2
 	
 	
 	
@@ -52,7 +52,7 @@ void ADC_Init (void)
 	
 	// Channel Sequence
 	ADC1->SQR3 |= (1<<0);  // SEQ1 for Channel 1
-	ADC1->SQR3 |= (4<<5);  // SEQ2 for CHannel 4
+	ADC1->SQR3 |= (4<<5);  // SEQ2 for CHannel 2
 	ADC1->SQR3 |= (18<<10);  // SEQ3 for CHannel 18
 }
 
@@ -114,8 +114,114 @@ void DMA_Config (uint32_t srcAdd, uint32_t destAdd, uint16_t size)
 
 
 
-uint16_t RxData[3];
+uint16_t RxData[2048];
 float Temperature;
+
+
+
+
+
+
+//uint16_t RxxData[2048];
+// Code from Tusher Sir
+/*
+void DMAConfig(uint16_t * sindat){
+	//Start DMA2 Streem5
+	RCC->AHB1ENR |= (1 << 22);
+	//DMA2_Stream5->CR = 0x00000000;
+	DMA2_Stream5->CR &= ~(1 << 0);
+	
+	//DMA2_Stream1->PAR = (unsigned long)&(TIM1->DMAR);
+	DMA2_Stream5->PAR = (uint32_t)&(TIM1->DMAR);
+	DMA2_Stream5->M0AR =(uint32_t)&sindat;
+	DMA2_Stream5->NDTR = 240;	//number of array element
+	DMA2_Stream5->CR |= (1 << 13);	//Memory data length 16
+	DMA2_Stream5->CR |= (1<< 11);	//pointer data length 16
+	DMA2_Stream5->CR |= ( 1 << 6);	//data direction----->>>memory to peripheral
+	DMA2_Stream5->CR |= (1 << 8);	//circular mode enable
+	DMA2_Stream5->CR |= (1 << 10);	//Memory address increment
+	DMA2_Stream5->CR |= (6 << 25);	//channeL6 selection
+	DMA2_Stream5->CR |= (1 << 23);	//Memory burst increment 4
+	DMA2_Stream5->CR |= (1 << 0);		//enable stream1
+}	
+*/
+
+//DAC Code
+  
+	void DAC_init (void)
+{
+	//// Enable peripherals: GPIOA, DMA, DAC, TIM6.
+	
+  RCC->AHB1ENR  |= ( RCC_AHB1ENR_GPIOAEN |
+                     RCC_AHB1ENR_DMA1EN );
+  RCC->APB1ENR  |= ( RCC_APB1ENR_DACEN |
+                     RCC_APB1ENR_TIM6EN );
+  // Pin A4 output type: Analog.
+  GPIOA->MODER    &= ~( 0x3 << ( 4 * 2 ) );
+  GPIOA->MODER    |=  ( 0x3 << ( 4 * 2 ) );
+	
+	//
+	  
+	// DMA configuration (channel 7 / stream 5).
+  // SxCR register:
+  // - Memory-to-peripheral
+  // - Circular mode enabled.
+  // - Increment memory ptr, don't increment periph ptr.
+  // - 16-bit data size for both source and destination.
+  // - High priority (2/3).
+  DMA1_Stream5->CR &= ~( DMA_SxCR_CHSEL |
+                         DMA_SxCR_PL |
+                         DMA_SxCR_MSIZE |
+                         DMA_SxCR_PSIZE |
+                         DMA_SxCR_PINC |
+                         DMA_SxCR_EN );
+  DMA1_Stream5->CR |=  ( ( 0x2 << DMA_SxCR_PL_Pos ) |
+                         ( 0x1 << DMA_SxCR_MSIZE_Pos ) |
+                         ( 0x1 << DMA_SxCR_PSIZE_Pos ) |
+                         ( 0x7 << DMA_SxCR_CHSEL_Pos ) |
+                         DMA_SxCR_MINC |
+                         DMA_SxCR_CIRC |
+                         ( 0x1 << DMA_SxCR_DIR_Pos ) );
+												 
+											 }
+
+ void DMA_Init_DAC (uint16_t srcAdd, uint16_t size)
+ {	 
+  // Set DMA source and destination addresses.
+  // Source: Address of the sine wave buffer in memory.
+  DMA1_Stream5->M0AR  = srcAdd;
+  // Dest.: Buffer
+	uint32_t destAdd= ( uint16_t )&( DAC1->DHR12R1 );
+  DMA1_Stream5->PAR   = destAdd;
+  // Set DMA data transfer length (# of sine wave samples).
+  DMA1_Stream5->NDTR  = size;
+  // Enable DMA1 Stream 5.
+  DMA1_Stream5->CR   |= ( DMA_SxCR_EN );
+  // TIM6 configuration.
+  // Set prescaler and autoreload for a 440Hz sine wave.
+  TIM6->PSC  =  ( 0x0000 );
+  TIM6->ARR  =  ( SystemCoreClock / ( 440 * size ) );
+  // Enable trigger output on timer update events.
+  TIM6->CR2 &= ~( TIM_CR2_MMS );
+  TIM6->CR2 |=  ( 0x2 << TIM_CR2_MMS_Pos );
+  // Start the timer.
+  TIM6->CR1 |=  ( TIM_CR1_CEN );
+  // DAC configuration.
+  // Set trigger sources to TIM6 TRGO.
+  DAC1->CR  &= ~( DAC_CR_TSEL1 );
+  // Enable DAC DMA requests.
+  DAC1->CR  |=  ( DAC_CR_DMAEN1 );
+  // Enable DAC Channels.
+  DAC1->CR  |=  ( DAC_CR_EN1 );
+  // Delay briefly to allow sampling to stabilize
+  delay_cycles( 1000 );
+  // Enable DAC channel trigger.
+  DAC1->CR  |=  ( DAC_CR_TEN1 );
+}
+ 
+
+
+
 
 
 int main ()
@@ -127,14 +233,14 @@ int main ()
 	ADC_Enable ();
 	DMA_Init ();
 	
-	DMA_Config ((uint32_t ) &ADC1->DR, (uint32_t) RxData, 3);
+	DMA_Config ((uint32_t ) &ADC1->DR, (uint32_t) RxData, 2048);
 	
 	ADC_Start ();
 	
 	while (1)
 	{
 		
-		Temperature = (((float)(3.3*RxData[2]/(float)4095) - 0.76) / 0.0025) + 25;
+		//Temperature = (((float)(3.3*RxData[2]/(float)4095) - 0.76) / 0.0025) + 25;
 		
 
 		
