@@ -148,7 +148,7 @@ void DMAConfig(uint16_t * sindat){
 
 //DAC Code
   
-	void DAC_init (void)
+	void DAC_Init (void)
 {
 	//// Enable peripherals: GPIOA, DMA, DAC, TIM6.
 	
@@ -232,8 +232,12 @@ int main ()
 	ADC_Init ();
 	ADC_Enable ();
 	DMA_Init ();
+	DAC_Init();
+	
 	
 	DMA_Config ((uint32_t ) &ADC1->DR, (uint32_t) RxData, 2048);
+	  
+	DMA_Init_DAC((uint32_t) RxData, 2048);
 	
 	ADC_Start ();
 	
