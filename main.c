@@ -34,7 +34,7 @@ void ADC_Init (void)
 	
 // Set the Respective GPIO PINs in the Analog Mode	
 	GPIOA->MODER |= (3<<2);  // analog mode for PA 1
-	GPIOA->MODER |= (3<<8);  // analog mode for PA 2
+	//GPIOA->MODER |= (3<<8);  // analog mode for PA 2
 	
 	
 	
@@ -52,8 +52,8 @@ void ADC_Init (void)
 	
 	// Channel Sequence
 	ADC1->SQR3 |= (1<<0);  // SEQ1 for Channel 1
-	ADC1->SQR3 |= (4<<5);  // SEQ2 for CHannel 2
-	ADC1->SQR3 |= (18<<10);  // SEQ3 for CHannel 18
+	//ADC1->SQR3 |= (4<<5);  // SEQ2 for CHannel 2
+	//ADC1->SQR3 |= (18<<10);  // SEQ3 for CHannel 18
 }
 
 void ADC_Enable (void)
@@ -115,7 +115,7 @@ void DMA_Config (uint32_t srcAdd, uint32_t destAdd, uint16_t size)
 
 
 uint16_t RxData[2048];
-float Temperature;
+//float Temperature;
 
 
 
@@ -190,7 +190,7 @@ void DMAConfig(uint16_t * sindat){
   // Set DMA source and destination addresses.
   // Source: Address of the sine wave buffer in memory.
   DMA1_Stream5->M0AR  = srcAdd;
-  // Dest.: Buffer
+  // Dest : Buffer
 	uint32_t destAdd= ( uint16_t )&( DAC1->DHR12R1 );
   DMA1_Stream5->PAR   = destAdd;
   // Set DMA data transfer length (# of sine wave samples).
@@ -214,7 +214,7 @@ void DMAConfig(uint16_t * sindat){
   // Enable DAC Channels.
   DAC1->CR  |=  ( DAC_CR_EN1 );
   // Delay briefly to allow sampling to stabilize
-  delay_cycles( 1000 );
+  Delay_us (uint16_t us)( 1000 );  
   // Enable DAC channel trigger.
   DAC1->CR  |=  ( DAC_CR_TEN1 );
 }
@@ -232,6 +232,22 @@ int main ()
 	ADC_Init ();
 	ADC_Enable ();
 	DMA_Init ();
+	
+	//float val = 1.2;
+	uint32_t var, i;\
+	
+	// DAC converstion
+	
+	for(i=0; i<2048; i++)
+	{
+	   if (RxData[i]>3)
+				RxData = 3;
+     RxData[i] = RxData[i]*(4096)/3.3;	// 4096 because of 12 bit	 
+	}
+	
+	
+	
+	
 	DAC_Init();
 	
 	
@@ -241,14 +257,18 @@ int main ()
 	
 	ADC_Start ();
 	
-	while (1)
-	{
+	float val = 1.2;
+	uint32_t var;
+	
+	//while (1)
+	//{
 		
-		//Temperature = (((float)(3.3*RxData[2]/(float)4095) - 0.76) / 0.0025) + 25;
+		
+		
 		
 
 		
-	  Delay_ms (1000);
-	}
+	  
+	//}
 	
 }
